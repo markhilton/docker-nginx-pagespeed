@@ -7,13 +7,13 @@ Project goal is an easy to build docker image of latest Nginx web server with Go
 
 The [PageSpeed](https://developers.google.com/speed/pagespeed/) tools analyze and optimize your site following web best practices. If turned ON it exposes a PageSpeed admin status page at:
 
--   `http://localhost:8080/pagespeed_admin/`
+- `http://localhost:8080/pagespeed_admin/`
 
 ## VTS
 
 The [VTS](https://github.com/vozlt/nginx-module-vts) Nginx virtual host traffic status module. It exposes a status page at:
 
--   `http://localhost:8080/status/`
+- `http://localhost:8080/status/`
 
 ## GeoIP
 
@@ -37,17 +37,17 @@ Container will produce web server access log through docker /stdout in json form
 
 Include environment variables to turn ON | OFF Page Speed optimization features for:
 
--   images
--   javascripts
--   style sheets
--   cache engine for cluster environments: files, memcached or redis
+- images
+- javascripts
+- style sheets
+- cache engine for cluster environments: files, memcached or redis
 
 as well as:
 
--   vhosts stats page
--   default host with health check
--   [FastCGI file cache](https://www.nginx.com/blog/9-tips-for-improving-wordpress-performance-with-nginx/)
--   [Redis memory cache](https://easyengine.io/wordpress-nginx/tutorials/single-site/redis_cache-with-conditional-purging/)
+- vhosts stats page
+- default host with health check
+- [FastCGI file cache](https://www.nginx.com/blog/9-tips-for-improving-wordpress-performance-with-nginx/)
+- [Redis memory cache](https://easyengine.io/wordpress-nginx/tutorials/single-site/redis_cache-with-conditional-purging/)
 
 Nginx is configured by default for high performance, multi cluster production environment, but can be easily adjusted with environment variables.
 
@@ -91,4 +91,12 @@ NGINX_PAGESPEED_REDIS=redis.host:6379
 
 ### PageSpeed Memcached cache storage address and port: memcached.host:port (default: none)
 NGINX_PAGESPEED_MEMCACHED=memcached.host:11211
+```
+
+# ARM
+
+Building on Mac M1 ARM https://www.docker.com/blog/multi-arch-images/
+
+```bash
+docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t crunchgeek/nginx-pagespeed:1.19.7-r1 .
 ```

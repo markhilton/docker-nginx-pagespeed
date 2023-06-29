@@ -64,7 +64,7 @@ RUN cd /tmp/incubator-pagespeed-ngx-${PAGESPEED_VERSION}-stable/ && \
 
 # Build in additional Nginx modules
 RUN cd /tmp && \
-	git clone git://github.com/vozlt/nginx-module-vts.git && \
+	git clone https://github.com/vozlt/nginx-module-vts.git && \
 	git clone https://github.com/FRiCKLE/ngx_cache_purge.git && \
 	git clone https://github.com/simplresty/ngx_devel_kit.git && \
 	git clone https://github.com/leev/ngx_http_geoip2_module.git && \
@@ -74,7 +74,7 @@ RUN cd /tmp && \
 	git clone https://github.com/openresty/srcache-nginx-module.git && \
 	git clone https://github.com/openresty/set-misc-nginx-module.git && \
 	git clone https://github.com/openresty/headers-more-nginx-module.git && \
-	git clone git://github.com/yaoweibin/ngx_http_substitutions_filter_module.git
+	git clone https://github.com/yaoweibin/ngx_http_substitutions_filter_module.git
 
 RUN ls -la /tmp/
 RUN ls -la /tmp/ngx_http_geoip2_module
