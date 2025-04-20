@@ -13,123 +13,139 @@ ENV NJS_RELEASE     1~bookworm
 ENV PKG_RELEASE     1~bookworm
 ENV DYNPKG_RELEASE  1~bookworm
 
-RUN set -x \
 # create nginx user/group first, to be consistent throughout docker variants
-    && groupadd --system --gid 101 nginx \
-    && useradd --system --gid nginx --no-create-home --home /nonexistent --comment "nginx user" --shell /bin/false --uid 101 nginx \
-    && apt-get update \
-    && apt-get install --no-install-recommends --no-install-suggests -y gnupg1 ca-certificates \
-    && \
-    NGINX_GPGKEYS="573BFD6B3D8FBC641079A6ABABF5BD827BD9BF62 8540A6F18833A80E9C1653A42FD21310B49F6B46 9E9BE90EACBCDE69FE9B204CBCDCD8A38D88A2B3"; \
-    NGINX_GPGKEY_PATH=/etc/apt/keyrings/nginx-archive-keyring.gpg; \
-    export GNUPGHOME="$(mktemp -d)"; \
-    found=''; \
-    for NGINX_GPGKEY in $NGINX_GPGKEYS; do \
-    for server in \
-        hkp://keyserver.ubuntu.com:80 \
-        pgp.mit.edu \
-    ; do \
-        echo "Fetching GPG key $NGINX_GPGKEY from $server"; \
-        gpg1 --keyserver "$server" --keyserver-options timeout=10 --recv-keys "$NGINX_GPGKEY" && found=yes && break; \
-    done; \
-    test -z "$found" && echo >&2 "error: failed to fetch GPG key $NGINX_GPGKEY" && exit 1; \
-    done; \
-    gpg1 --export "$NGINX_GPGKEYS" > "$NGINX_GPGKEY_PATH" ; \
-    rm -rf "$GNUPGHOME"; \
-    apt-get remove --purge --auto-remove -y gnupg1 && rm -rf /var/lib/apt/lists/* \
-    && dpkgArch="$(dpkg --print-architecture)" \
-    && nginxPackages=" \
-        nginx=${NGINX_VERSION}-${PKG_RELEASE} \
-        nginx-module-xslt=${NGINX_VERSION}-${DYNPKG_RELEASE} \
-        nginx-module-geoip=${NGINX_VERSION}-${DYNPKG_RELEASE} \
-        nginx-module-image-filter=${NGINX_VERSION}-${DYNPKG_RELEASE} \
-        nginx-module-njs=${NGINX_VERSION}+${NJS_VERSION}-${NJS_RELEASE} \
-    " \
-    && case "$dpkgArch" in \
-        amd64|arm64) \
-# arches officialy built by upstream
-            echo "deb [signed-by=$NGINX_GPGKEY_PATH] https://nginx.org/packages/mainline/debian/ bookworm nginx" >> /etc/apt/sources.list.d/nginx.list \
-            && apt-get update \
-            ;; \
-        *) \
-# we're on an architecture upstream doesn't officially build for
-# let's build binaries from the published packaging sources
-# new directory for storing sources and .deb files
-            tempDir="$(mktemp -d)" \
-            && chmod 777 "$tempDir" \
-# (777 to ensure APT's "_apt" user can access it too)
-            \
-# save list of currently-installed packages so build dependencies can be cleanly removed later
-            && savedAptMark="$(apt-mark showmanual)" \
-            \
-# build .deb files from upstream's packaging sources
-            && apt-get update \
-            && apt-get install --no-install-recommends --no-install-suggests -y \
-                curl \
-                devscripts \
-                equivs \
-                git \
-                libxml2-utils \
-                lsb-release \
-                xsltproc \
-            && ( \
-                cd "$tempDir" \
-                && REVISION="${NGINX_VERSION}-${PKG_RELEASE}" \
-                && REVISION=${REVISION%~*} \
-                && curl -f -L -O https://github.com/nginx/pkg-oss/archive/${REVISION}.tar.gz \
-                && PKGOSSCHECKSUM="c773d98b567bd585c17f55702bf3e4c7d82b676bfbde395270e90a704dca3c758dfe0380b3f01770542b4fd9bed1f1149af4ce28bfc54a27a96df6b700ac1745 *${REVISION}.tar.gz" \
-                && if [ "$(openssl sha512 -r ${REVISION}.tar.gz)" = "$PKGOSSCHECKSUM" ]; then \
-                    echo "pkg-oss tarball checksum verification succeeded!"; \
-                else \
-                    echo "pkg-oss tarball checksum verification failed!"; \
-                    exit 1; \
-                fi \
-                && tar xzvf ${REVISION}.tar.gz \
-                && cd pkg-oss-${REVISION} \
-                && cd debian \
-                && for target in base module-geoip module-image-filter module-njs module-xslt; do \
-                    make rules-$target; \
-                    mk-build-deps --install --tool="apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends --yes" \
-                        debuild-$target/nginx-$NGINX_VERSION/debian/control; \
-                done \
-                && make base module-geoip module-image-filter module-njs module-xslt \
-            ) \
-# we don't remove APT lists here because they get re-downloaded and removed later
-            \
-# reset apt-mark's "manual" list so that "purge --auto-remove" will remove all build dependencies
-# (which is done after we install the built packages so we don't have to redownload any overlapping dependencies)
-            && apt-mark showmanual | xargs apt-mark auto > /dev/null \
-            && { [ -z "$savedAptMark" ] || apt-mark manual $savedAptMark; } \
-            \
-# create a temporary local APT repo to install from (so that dependency resolution can be handled by APT, as it should be)
-            && ls -lAFh "$tempDir" \
-            && ( cd "$tempDir" && dpkg-scanpackages . > Packages ) \
-            && grep '^Package: ' "$tempDir/Packages" \
-            && echo "deb [ trusted=yes ] file://$tempDir ./" > /etc/apt/sources.list.d/temp.list \
-# work around the following APT issue by using "Acquire::GzipIndexes=false" (overriding "/etc/apt/apt.conf.d/docker-gzip-indexes")
-#   Could not open file /var/lib/apt/lists/partial/_tmp_tmp.ODWljpQfkE_._Packages - open (13: Permission denied)
-#   ...
-#   E: Failed to fetch store:/var/lib/apt/lists/partial/_tmp_tmp.ODWljpQfkE_._Packages  Could not open file /var/lib/apt/lists/partial/_tmp_tmp.ODWljpQfkE_._Packages - open (13: Permission denied)
-            && apt-get -o Acquire::GzipIndexes=false update \
-            ;; \
-    esac \
-    \
-    && apt-get install --no-install-recommends --no-install-suggests -y \
-                        $nginxPackages \
-                        gettext-base \
-                        curl \
-    && apt-get remove --purge --auto-remove -y && rm -rf /var/lib/apt/lists/* /etc/apt/sources.list.d/nginx.list \
-    \
-# if we have leftovers from building, let's purge them (including extra, unnecessary build deps)
-    && if [ -n "$tempDir" ]; then \
-        apt-get purge -y --auto-remove \
-        && rm -rf "$tempDir" /etc/apt/sources.list.d/temp.list; \
-    fi \
-# forward request and error logs to docker log collector
+RUN groupadd --system --gid 101 nginx \
+    && useradd --system --gid nginx --no-create-home --home /nonexistent --comment "nginx user" --shell /bin/false --uid 101 nginx
+
+# Install build dependencies
+RUN apt-get update && apt-get install --no-install-recommends --no-install-suggests -y \
+    build-essential \
+    ca-certificates \
+    curl \
+    git \
+    libpcre3-dev \
+    libssl-dev \
+    zlib1g-dev \
+    libmaxminddb-dev \
+    # Add other dependencies needed by your specific modules if any (e.g., libxml2-dev for xslt, libgd-dev for image_filter)
+    && rm -rf /var/lib/apt/lists/*
+
+# Build Nginx from source with custom modules
+RUN BUILD_DIR=$(mktemp -d) \
+    && cd "$BUILD_DIR" \
+    # Clone custom modules (matching the old Dockerfile)
+    && git clone https://github.com/vozlt/nginx-module-vts.git \
+    && git clone https://github.com/FRiCKLE/ngx_cache_purge.git \
+    && git clone https://github.com/simplresty/ngx_devel_kit.git \
+    && git clone https://github.com/leev/ngx_http_geoip2_module.git \
+    && git clone https://github.com/openresty/echo-nginx-module.git \
+    && git clone https://github.com/onnimonni/redis-nginx-module.git \
+    && git clone https://github.com/openresty/redis2-nginx-module.git \
+    && git clone https://github.com/openresty/srcache-nginx-module.git \
+    && git clone https://github.com/openresty/set-misc-nginx-module.git \
+    && git clone https://github.com/openresty/headers-more-nginx-module.git \
+    && git clone https://github.com/yaoweibin/ngx_http_substitutions_filter_module.git \
+    # Download and extract Nginx source
+    && curl -fSL "http://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz" -o nginx.tar.gz \
+    && tar -zxf nginx.tar.gz \
+    && cd nginx-${NGINX_VERSION} \
+    # Configure Nginx with standard and custom modules
+    # Combining flags from old Dockerfile and standard practices
+    && ./configure \
+        --prefix=/etc/nginx \
+        --sbin-path=/usr/sbin/nginx \
+        --modules-path=/usr/lib/nginx/modules \
+        --conf-path=/etc/nginx/nginx.conf \
+        --error-log-path=/var/log/nginx/error.log \
+        --http-log-path=/var/log/nginx/access.log \
+        --pid-path=/var/run/nginx.pid \
+        --lock-path=/var/run/nginx.lock \
+        --http-client-body-temp-path=/var/cache/nginx/client_temp \
+        --http-proxy-temp-path=/var/cache/nginx/proxy_temp \
+        --http-fastcgi-temp-path=/var/cache/nginx/fastcgi_temp \
+        --http-uwsgi-temp-path=/var/cache/nginx/uwsgi_temp \
+        --http-scgi-temp-path=/var/cache/nginx/scgi_temp \
+        --user=nginx \
+        --group=nginx \
+        --with-compat \
+        --with-file-aio \
+        --with-threads \
+        # --with-http_addition_module # (Example standard module, uncomment if needed)
+        # --with-http_auth_request_module # (Example standard module, uncomment if needed)
+        # --with-http_dav_module # (Example standard module, uncomment if needed)
+        # --with-http_flv_module # (Example standard module, uncomment if needed)
+        --with-http_gunzip_module \
+        --with-http_gzip_static_module \
+        # --with-http_mp4_module # (Example standard module, uncomment if needed)
+        # --with-http_random_index_module # (Example standard module, uncomment if needed)
+        --with-http_realip_module \
+        --with-http_secure_link_module \
+        # --with-http_slice_module # (Example standard module, uncomment if needed)
+        --with-http_ssl_module \
+        --with-http_stub_status_module \
+        --with-http_sub_module \
+        --with-http_v2_module \
+        # --with-http_v3_module # (Requires specific build setup, uncomment if needed)
+        # --with-mail # (Uncomment if needed)
+        # --with-mail_ssl_module # (Uncomment if needed)
+        --with-stream \
+        # --with-stream_realip_module # (Example standard module, uncomment if needed)
+        --with-stream_ssl_module \
+        # --with-stream_ssl_preread_module # (Example standard module, uncomment if needed)
+        # Modules explicitly excluded in the old Dockerfile
+        --without-http_autoindex_module \
+        --without-http_browser_module \
+        --without-http_userid_module \
+        --without-mail_pop3_module \
+        --without-mail_imap_module \
+        --without-mail_smtp_module \
+        --without-http_split_clients_module \
+        --without-http_uwsgi_module \
+        --without-http_scgi_module \
+        # --without-http_upstream_ip_hash_module # (Excluded in old Dockerfile, uncomment if needed)
+        # Add custom modules from the old Dockerfile
+        --add-module="$BUILD_DIR/ngx_devel_kit" \
+        --add-module="$BUILD_DIR/ngx_cache_purge" \
+        --add-module="$BUILD_DIR/nginx-module-vts" \
+        --add-module="$BUILD_DIR/echo-nginx-module" \
+        --add-module="$BUILD_DIR/redis-nginx-module" \
+        --add-module="$BUILD_DIR/redis2-nginx-module" \
+        --add-module="$BUILD_DIR/srcache-nginx-module" \
+        --add-module="$BUILD_DIR/set-misc-nginx-module" \
+        --add-module="$BUILD_DIR/ngx_http_geoip2_module" \
+        --add-module="$BUILD_DIR/headers-more-nginx-module" \
+        --add-module="$BUILD_DIR/ngx_http_substitutions_filter_module" \
+        # Add standard dynamic modules if needed (requires build dependencies like libxml2-dev, libgd-dev, libgeoip-dev, potentially njs source)
+        # --add-dynamic-module=/path/to/njs/module # Example if building njs separately
+        # --with-http_xslt_module=dynamic # Requires libxml2-dev, libxslt1-dev
+        # --with-http_image_filter_module=dynamic # Requires libgd-dev
+        # --with-http_geoip_module=dynamic # Requires libgeoip-dev (Note: different from geoip2 module above)
+    && make -j$(getconf _NPROCESSORS_ONLN) \
+    && make install \
+    # Clean up source and build dependencies
+    && apt-get purge -y --auto-remove build-essential git curl \
+    && rm -rf "$BUILD_DIR" \
+    && rm -rf /var/lib/apt/lists/* \
+    # Ensure necessary runtime dependencies are installed (adjust based on actual needs)
+    && apt-get update && apt-get install --no-install-recommends --no-install-suggests -y \
+        libpcre3 \
+        libssl3 \
+        zlib1g \
+        libmaxminddb0 \
+        ca-certificates \
+        gettext-base \
+        # Add other runtime libs needed by modules (e.g., libxml2, libxslt1.1, libgd3, libgeoip1)
+    && rm -rf /var/lib/apt/lists/* \
+    # Create cache directories used by default config
+    && mkdir -p /var/cache/nginx/client_temp /var/cache/nginx/fastcgi_temp /var/cache/nginx/proxy_temp /var/cache/nginx/scgi_temp /var/cache/nginx/uwsgi_temp \
+    && chmod 700 /var/cache/nginx \
+    && chown nginx:nginx /var/cache/nginx \
+    # Forward request and error logs to docker log collector
     && ln -sf /dev/stdout /var/log/nginx/access.log \
     && ln -sf /dev/stderr /var/log/nginx/error.log \
-# create a docker-entrypoint.d directory
+    # Create a docker-entrypoint.d directory
     && mkdir /docker-entrypoint.d
+# This section is removed as the build process above handles installation and cleanup.
 
 COPY docker-entrypoint.sh /
 COPY 10-listen-on-ipv6-by-default.sh /docker-entrypoint.d
