@@ -7,11 +7,11 @@ FROM debian:bookworm-slim
 
 LABEL maintainer="NGINX Docker Maintainers <docker-maint@nginx.com>"
 
-ENV NGINX_VERSION   1.27.5
-ENV NJS_VERSION     0.8.10
-ENV NJS_RELEASE     1~bookworm
-ENV PKG_RELEASE     1~bookworm
-ENV DYNPKG_RELEASE  1~bookworm
+ENV NGINX_VERSION=1.27.5
+ENV NJS_VERSION=0.8.10
+ENV NJS_RELEASE=1~bookworm
+ENV PKG_RELEASE=1~bookworm
+ENV DYNPKG_RELEASE=1~bookworm
 
 # create nginx user/group first, to be consistent throughout docker variants
 RUN groupadd --system --gid 101 nginx \
