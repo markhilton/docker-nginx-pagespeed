@@ -98,5 +98,5 @@ NGINX_PAGESPEED_MEMCACHED=memcached.host:11211
 Building on Mac M1 ARM https://www.docker.com/blog/multi-arch-images/
 
 ```bash
-docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t crunchgeek/nginx-pagespeed:1.19.7-r1 .
+docker buildx build --platform linux/amd64,linux/arm64 -t crunchgeek/nginx-pagespeed:1.19.7-r2 .
 ```

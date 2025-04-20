@@ -1,25 +1,26 @@
-# PHP only, required if PHP was built with --enable-force-cgi-redirect
-fastcgi_param  REDIRECT_STATUS              200;
+fastcgi_param  QUERY_STRING           $query_string;
+fastcgi_param  REQUEST_METHOD         $request_method;
+fastcgi_param  CONTENT_TYPE           $content_type;
+fastcgi_param  CONTENT_LENGTH         $content_length;
 
-fastcgi_param  GEOIP_ADDR                   $remote_addr;
-fastcgi_param  GEOIP_COUNTRY_CODE           $geoip2_data_country_iso;
-fastcgi_param  GEOIP_COUNTRY_NAME           $geoip2_data_country_name;
-fastcgi_param  GEOIP_REGION_CODE            $geoip2_data_region_iso;
-fastcgi_param  GEOIP_REGION_NAME            $geoip2_data_region_name;
-fastcgi_param  GEOIP_CITY_NAME              $geoip2_data_city_name;
-fastcgi_param  GEOIP_LATITUDE               $geoip2_data_location_latitude;
-fastcgi_param  GEOIP_LONGITUDE              $geoip2_data_location_longitude;
-fastcgi_param  GEOIP_POSTAL_CODE            $geoip2_data_postal_code;
-fastcgi_param  GEOIP_CONTINENT_CODE         $geoip2_data_continent_code;
-fastcgi_param  GEOIP_CONTINENT_NAME         $geoip2_data_continent_name;
+fastcgi_param  SCRIPT_NAME            $fastcgi_script_name;
+fastcgi_param  REQUEST_URI            $request_uri;
+fastcgi_param  DOCUMENT_URI           $document_uri;
+fastcgi_param  DOCUMENT_ROOT          $document_root;
+fastcgi_param  SERVER_PROTOCOL        $server_protocol;
+fastcgi_param  REQUEST_SCHEME         $scheme;
 
-# common line so we dont have to include it on every vhost
-fastcgi_param  SCRIPT_FILENAME              $document_root$fastcgi_script_name;
+fastcgi_param  GATEWAY_INTERFACE      CGI/1.1;
+fastcgi_param  SERVER_SOFTWARE        nginx/$nginx_version;
 
-# https://www.namhuy.net/3120/fix-nginx-upstream-response-buffered-temporary-file-error.html
-fastcgi_buffer_size                        32k;
-fastcgi_buffers                        256 16k;
-fastcgi_index                        index.php;
+fastcgi_param  REMOTE_ADDR            $remote_addr;
+fastcgi_param  REMOTE_PORT            $remote_port;
+fastcgi_param  SERVER_ADDR            $server_addr;
+fastcgi_param  SERVER_PORT            $server_port;
+fastcgi_param  SERVER_NAME            $server_name;
 
 # help PHP recognize HTTPS protocol behind proxy
-fastcgi_param    HTTPS $php_https;
+fastcgi_param  HTTPS                  $php_https;
+
+# common line so we dont have to include it on every vhost
+fastcgi_param  SCRIPT_FILENAME        $document_root$fastcgi_script_name;
