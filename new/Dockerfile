@@ -40,6 +40,8 @@ RUN BUILD_DIR=$(mktemp -d) \
     && git clone https://github.com/leev/ngx_http_geoip2_module.git \
     && git clone https://github.com/openresty/echo-nginx-module.git \
     && git clone https://github.com/onnimonni/redis-nginx-module.git \
+    # Patch redis-nginx-module for newer Nginx compatibility (https://github.com/onnimonni/redis-nginx-module/issues/16)
+    && sed -i 's|u->headers_in.content_encoding = h;|u->headers_in.content_encoding = *h;|' redis-nginx-module/ngx_http_redis_module.c \
     && git clone https://github.com/openresty/redis2-nginx-module.git \
     && git clone https://github.com/openresty/srcache-nginx-module.git \
     && git clone https://github.com/openresty/set-misc-nginx-module.git \
