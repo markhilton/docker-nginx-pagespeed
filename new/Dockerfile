@@ -26,7 +26,7 @@ RUN apt-get update && apt-get install --no-install-recommends --no-install-sugge
     libpcre3-dev \
     libssl-dev \
     zlib1g-dev \
-    libmaxminddb-dev \
+    # libmaxminddb-dev removed as geoip2 module is removed
     # Add other dependencies needed by your specific modules if any (e.g., libxml2-dev for xslt, libgd-dev for image_filter)
     && rm -rf /var/lib/apt/lists/*
 
@@ -37,11 +37,10 @@ RUN BUILD_DIR=$(mktemp -d) \
     && git clone https://github.com/vozlt/nginx-module-vts.git \
     && git clone https://github.com/FRiCKLE/ngx_cache_purge.git \
     && git clone https://github.com/simplresty/ngx_devel_kit.git \
-    && git clone https://github.com/leev/ngx_http_geoip2_module.git \
+    # geoip2 module removed
     && git clone https://github.com/openresty/echo-nginx-module.git \
-    && git clone https://github.com/onnimonni/redis-nginx-module.git \
-    # Patch redis-nginx-module for newer Nginx compatibility (https://github.com/onnimonni/redis-nginx-module/issues/16)
-    && sed -i 's|u->headers_in.content_encoding = h;|u->headers_in.content_encoding = *h;|' redis-nginx-module/ngx_http_redis_module.c \
+    # redis-nginx-module removed
+    # redis-nginx-module patch removed
     && git clone https://github.com/openresty/redis2-nginx-module.git \
     && git clone https://github.com/openresty/srcache-nginx-module.git \
     && git clone https://github.com/openresty/set-misc-nginx-module.git \
@@ -110,11 +109,11 @@ RUN BUILD_DIR=$(mktemp -d) \
         --add-module="$BUILD_DIR/ngx_cache_purge" \
         --add-module="$BUILD_DIR/nginx-module-vts" \
         --add-module="$BUILD_DIR/echo-nginx-module" \
-        --add-module="$BUILD_DIR/redis-nginx-module" \
+        # redis-nginx-module removed
         --add-module="$BUILD_DIR/redis2-nginx-module" \
         --add-module="$BUILD_DIR/srcache-nginx-module" \
         --add-module="$BUILD_DIR/set-misc-nginx-module" \
-        --add-module="$BUILD_DIR/ngx_http_geoip2_module" \
+        # geoip2 module removed
         --add-module="$BUILD_DIR/headers-more-nginx-module" \
         --add-module="$BUILD_DIR/ngx_http_substitutions_filter_module" \
         # Add standard dynamic modules if needed (requires build dependencies like libxml2-dev, libgd-dev, libgeoip-dev, potentially njs source)
@@ -133,7 +132,7 @@ RUN BUILD_DIR=$(mktemp -d) \
         libpcre3 \
         libssl3 \
         zlib1g \
-        libmaxminddb0 \
+        # libmaxminddb0 removed as geoip2 module is removed
         ca-certificates \
         gettext-base \
         # Add other runtime libs needed by modules (e.g., libxml2, libxslt1.1, libgd3, libgeoip1)
