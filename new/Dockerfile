@@ -30,11 +30,10 @@ RUN apt-get update && apt-get install --no-install-recommends --no-install-sugge
     # Add other dependencies needed by your specific modules if any (e.g., libxml2-dev for xslt, libgd-dev for image_filter)
     && rm -rf /var/lib/apt/lists/*
 
-# Build Nginx from source with custom modules
-RUN BUILD_DIR=$(mktemp -d) \
-    && cd "$BUILD_DIR" \
-    # Clone custom modules (matching the old Dockerfile)
-    && git clone https://github.com/vozlt/nginx-module-vts.git \
+WORKDIR /usr/src/build
+
+# Clone custom modules
+RUN git clone https://github.com/vozlt/nginx-module-vts.git \
     && git clone https://github.com/FRiCKLE/ngx_cache_purge.git \
     && git clone https://github.com/simplresty/ngx_devel_kit.git \
     # geoip2 module removed
@@ -45,13 +44,14 @@ RUN BUILD_DIR=$(mktemp -d) \
     && git clone https://github.com/openresty/srcache-nginx-module.git \
     && git clone https://github.com/openresty/set-misc-nginx-module.git \
     && git clone https://github.com/openresty/headers-more-nginx-module.git \
-    && git clone https://github.com/yaoweibin/ngx_http_substitutions_filter_module.git \
-    # Download and extract Nginx source
-    && curl -fSL "http://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz" -o nginx.tar.gz \
-    && tar -zxf nginx.tar.gz \
-    && cd nginx-${NGINX_VERSION} \
-    # Configure Nginx with standard and custom modules
-    # Combining flags from old Dockerfile and standard practices
+    && git clone https://github.com/yaoweibin/ngx_http_substitutions_filter_module.git
+
+# Download and extract Nginx source
+RUN curl -fSL "http://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz" -o nginx.tar.gz \
+    && tar -zxf nginx.tar.gz
+
+# Configure, build, and install Nginx
+RUN cd nginx-${NGINX_VERSION} \
     && ./configure \
         --prefix=/etc/nginx \
         --sbin-path=/usr/sbin/nginx \
@@ -104,30 +104,30 @@ RUN BUILD_DIR=$(mktemp -d) \
         --without-http_uwsgi_module \
         --without-http_scgi_module \
         # --without-http_upstream_ip_hash_module # (Excluded in old Dockerfile, uncomment if needed)
-        # Add custom modules from the old Dockerfile
-        --add-module="$BUILD_DIR/ngx_devel_kit" \
-        --add-module="$BUILD_DIR/ngx_cache_purge" \
-        --add-module="$BUILD_DIR/nginx-module-vts" \
-        --add-module="$BUILD_DIR/echo-nginx-module" \
+        # Add custom modules (paths relative to WORKDIR /usr/src/build)
+        --add-module=../ngx_devel_kit \
+        --add-module=../ngx_cache_purge \
+        --add-module=../nginx-module-vts \
+        --add-module=../echo-nginx-module \
         # redis-nginx-module removed
-        --add-module="$BUILD_DIR/redis2-nginx-module" \
-        --add-module="$BUILD_DIR/srcache-nginx-module" \
-        --add-module="$BUILD_DIR/set-misc-nginx-module" \
+        --add-module=../redis2-nginx-module \
+        --add-module=../srcache-nginx-module \
+        --add-module=../set-misc-nginx-module \
         # geoip2 module removed
-        --add-module="$BUILD_DIR/headers-more-nginx-module" \
-        --add-module="$BUILD_DIR/ngx_http_substitutions_filter_module" \
+        --add-module=../headers-more-nginx-module \
+        --add-module=../ngx_http_substitutions_filter_module \
         # Add standard dynamic modules if needed (requires build dependencies like libxml2-dev, libgd-dev, libgeoip-dev, potentially njs source)
         # --add-dynamic-module=/path/to/njs/module # Example if building njs separately
         # --with-http_xslt_module=dynamic # Requires libxml2-dev, libxslt1-dev
         # --with-http_image_filter_module=dynamic # Requires libgd-dev
         # --with-http_geoip_module=dynamic # Requires libgeoip-dev (Note: different from geoip2 module above)
     && make -j$(getconf _NPROCESSORS_ONLN) \
-    && make install \
-    # Clean up source and build dependencies
-    && apt-get purge -y --auto-remove build-essential git curl \
-    && rm -rf "$BUILD_DIR" \
+    && make install
+
+# Clean up build dependencies, install runtime dependencies, and perform final setup
+RUN apt-get purge -y --auto-remove build-essential git curl \
+    && rm -rf /usr/src/build \
     && rm -rf /var/lib/apt/lists/* \
-    # Ensure necessary runtime dependencies are installed (adjust based on actual needs)
     && apt-get update && apt-get install --no-install-recommends --no-install-suggests -y \
         libpcre3 \
         libssl3 \
