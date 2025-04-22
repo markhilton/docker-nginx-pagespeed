@@ -1,0 +1,43 @@
+services:
+  traefik:
+    image: traefik:v3.3.5
+    command:
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+  app-frontend:
+    image: nginx:alpine
+    volumes:
+      - ./app-frontend:/usr/share/nginx/html
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.app-frontend.rule=Host(`app.yourdomain.com`)"
+      - "traefik.http.routers.app-frontend.entrypoints=web"
+  admin-frontend:
+      image: nginx:alpine
+      volumes:
+        - ./admin-frontend:/usr/share/nginx/html
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.admin-frontend.rule=Host(`admin.yourdomain.com`)"
+        - "traefik.http.routers.admin-frontend.entrypoints=web"
+  backend1:
+      build: ./backend1
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.backend1.rule=Host(`api.yourdomain.com`) && PathPrefix(`/backend1`)"
+        - "traefik.http.routers.backend1.entrypoints=web"
+        - "traefik.http.services.backend1.loadbalancer.server.port=3000"
+  backend2:
+      build: ./backend2
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.backend2.rule=Host(`api.yourdomain.com`) && PathPrefix(`/backend2`)"
+        - "traefik.http.routers.backend2.entrypoints=web"
+        - "traefik.http.services.backend2.loadbalancer.server.port=3000"
