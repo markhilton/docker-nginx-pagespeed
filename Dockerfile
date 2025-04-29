@@ -10,8 +10,7 @@ ENV MAKE_J=${MAKE_J} \
 	LIBPNG_VERSION=${LIBPNG_VERSION} \
 	PAGESPEED_VERSION=${PAGESPEED_VERSION}
 
-RUN apt-get update -y && \
-	apt-get upgrade -y
+RUN apt-get update -y && apt-get upgrade -y
 
 RUN apt-get install -y \
 	apt-utils \
@@ -64,7 +63,7 @@ RUN cd /tmp/incubator-pagespeed-ngx-${PAGESPEED_VERSION}-stable/ && \
 
 # Build in additional Nginx modules
 RUN cd /tmp && \
-	git clone git://github.com/vozlt/nginx-module-vts.git && \
+	# git clone git://github.com/vozlt/nginx-module-vts.git && \
 	git clone https://github.com/FRiCKLE/ngx_cache_purge.git && \
 	git clone https://github.com/simplresty/ngx_devel_kit.git && \
 	git clone https://github.com/leev/ngx_http_geoip2_module.git && \
@@ -115,7 +114,7 @@ RUN cd /tmp && \
 	--pid-path=/var/run/nginx.pid \
 	--add-module=/tmp/ngx_devel_kit \
 	--add-module=/tmp/ngx_cache_purge \
-	--add-module=/tmp/nginx-module-vts \
+	# --add-module=/tmp/nginx-module-vts \
 	--add-module=/tmp/echo-nginx-module \
 	--add-module=/tmp/redis-nginx-module \
 	--add-module=/tmp/redis2-nginx-module \
