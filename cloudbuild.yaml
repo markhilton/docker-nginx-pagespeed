@@ -1,33 +1,33 @@
 steps:
 # slack deployment status
 - name: 'gcr.io/cloud-builders/curl'
-  args: [ '-X', 'POST', '-H', 'Content-type: application/json', '--data', 
+  args: [ '-X', 'POST', '-H', 'Content-type: application/json', '--data',
           '{"text":"`gcr.io/$PROJECT_ID/$_IMAGE:$BRANCH_NAME$TAG_NAME` build started!"}', '${_WEBHOOK_URL}' ]
 
 # pull docker image for cache
 - name: 'gcr.io/cloud-builders/docker'
   entrypoint: 'bash'
-  args: 
+  args:
   - '-c'
-  - | 
-    docker pull gcr.io/$PROJECT_ID/$_IMAGE:$BRANCH_NAME || exit 0
+  - |
+    docker pull gcr.io/$PROJECT_ID/$_IMAGE:$BRANCH_NAME$TAG_NAME || exit 0
 
 # build docker image
 - name: 'gcr.io/cloud-builders/docker'
   args: [
             'build',
-            '-t', 'gcr.io/$PROJECT_ID/$_IMAGE:$BRANCH_NAME',
-            '--cache-from', 'gcr.io/$PROJECT_ID/$_IMAGE:$BRANCH_NAME',
+            '-t', 'gcr.io/$PROJECT_ID/$_IMAGE:$BRANCH_NAME$TAG_NAME',
+            '--cache-from', 'gcr.io/$PROJECT_ID/$_IMAGE:$BRANCH_NAME$TAG_NAME',
             '.'
         ]
 
 # slack deployment status
 - name: 'gcr.io/cloud-builders/curl'
-  args: [ '-X', 'POST', '-H', 'Content-type: application/json', '--data', 
-          '{"text":"gcr.io/$PROJECT_ID/$_IMAGE:$BRANCH_NAME build completed!"}', '${_WEBHOOK_URL}' ]
+  args: [ '-X', 'POST', '-H', 'Content-type: application/json', '--data',
+          '{"text":"gcr.io/$PROJECT_ID/$_IMAGE:$BRANCH_NAME$TAG_NAME build completed!"}', '${_WEBHOOK_URL}' ]
 
 # store artifact
-images: ['gcr.io/$PROJECT_ID/$_IMAGE:$BRANCH_NAME']
+images: ['gcr.io/$PROJECT_ID/$_IMAGE:$BRANCH_NAME$TAG_NAME']
 
 # arguments
 substitutions:
